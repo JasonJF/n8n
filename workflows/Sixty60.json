@@ -1,0 +1,341 @@
+{
+  "name": "Sixty60",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        460,
+        460
+      ],
+      "id": "ab8d0ad0-c9ed-4d42-88b1-5b5495e56035",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "Label_8053273605920564323"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        680,
+        460
+      ],
+      "id": "1209dc09-f743-40a7-8c0d-0b1cdc477d38",
+      "name": "Gmail",
+      "webhookId": "e47fd36f-7487-4a16-93d8-bb6457b4bb90",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "N7uhhl2sa6bZUeBl",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "from bs4 import BeautifulSoup\n\n# Get the HTML email body\nhtml_body = items[0]['json']['html']\n\n# Use BeautifulSoup to extract text\nsoup = BeautifulSoup(html_body, \"html.parser\")\nplain_text_body = soup.get_text(separator=\"\\n\", strip=True)\n\nreturn [{\"json\": {\"body\": plain_text_body}}]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        460
+      ],
+      "id": "34faea9e-4388-4ad6-82e7-8a8bc7ddfa0d",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract structured order details from the following invoice text:\n\n{{ $json.body }}\n\nReturn JSON formatted as:\n\n{\n  \"order_details\": {\n    \"order_number\": \"<order_number>\",\n    \"date_placed\": \"<date_placed>\",\n    \"total_price\": \"<total_price>\"\n  },\n  \"order_items\": [\n    {\n      \"name\": \"<product_name>\",\n      \"quantity\": <quantity>,\n      \"unit_price\": \"<unit_price>\",\n      \"total_price\": \"<total_price>\"\n    }\n  ]\n}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1340,
+        460
+      ],
+      "id": "20d524ff-2781-41b5-a4bb-c4e4a1e6660f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1220,
+        680
+      ],
+      "id": "bedc9f51-7b1e-4d3e-82b7-21cfa2956982",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "6h4odfmlkyU4ft7s",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"order_details\": {\n    \"order_number\": \"144630916\",\n    \"date_placed\": \"08 Mar, 2025 8:26 AM\",\n    \"total_price\": \"R 221.97\"\n  },\n  \"order_items\": [\n    {\n      \"name\": \"Fair Cape Lunchbox Sweetened StrawberryVanillaGranadilla Yoghurt 6 x 80g\",\n      \"quantity\": 1,\n      \"unit_price\": \"R 12.99\",\n      \"total_price\": \"R 12.99\"\n    },\n    {\n      \"name\": \"Glosheen Argan Oil Hair Styling Gel 500ml\",\n      \"quantity\": 1,\n      \"unit_price\": \"R 54.99\",\n      \"total_price\": \"R 54.99\"\n    },\n    {\n      \"name\": \"Super Power AAA Zinc Carbon Batteries 4 Pack\",\n      \"quantity\": 1,\n      \"unit_price\": \"R 39.99\",\n      \"total_price\": \"R 39.99\"\n    },\n    {\n      \"name\": \"Lumaglo Warm White Non-Dimmable LED Light Bulb 5W 5 Pack\",\n      \"quantity\": 1,\n      \"unit_price\": \"R 79.00\",\n      \"total_price\": \"R 79.00\"\n    }\n  ]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1520,
+        680
+      ],
+      "id": "77ec3ce4-fc59-4b6e-9254-d6fa5e2c637f",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT EXISTS (SELECT 1 FROM orders WHERE order_id = '{{ $json.output.order_details.order_number }}') AS order_exists;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1700,
+        460
+      ],
+      "id": "5e2a17c3-9b48-475d-a48e-8968c14942ba",
+      "name": "Postgres",
+      "credentials": {
+        "postgres": {
+          "id": "dAUcJE5tJB9rDVGt",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "050c3374-1663-48fa-9fc1-6c395554bdda",
+              "leftValue": "={{ $json.order_exists }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        460
+      ],
+      "id": "ea964102-5abb-4872-9fb3-3f88e9d3b9e7",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "total_price": "={{ $('AI Agent').item.json.output.order_details.total_price.replace('R ', '') }}",
+            "order_id": "={{ $('AI Agent').item.json.output.order_details.order_number }}",
+            "order_date": "={{ $('AI Agent').item.json.output.order_details.date_placed }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_date",
+              "displayName": "order_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_price",
+              "displayName": "total_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1880,
+        740
+      ],
+      "id": "a2fceebf-e1d3-4e43-9350-5692f75d668a",
+      "name": "Postgres1",
+      "credentials": {
+        "postgres": {
+          "id": "dAUcJE5tJB9rDVGt",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Postgres1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d3f11db7-a419-46e1-b62d-86af3100ca1b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "91e97c759250b69a783c6ef754a2b4a97e3957fc2a6290f6e7adbf7e9c720a07"
+  },
+  "id": "bSLwx1G6aT1pKOFh",
+  "tags": []
+}
