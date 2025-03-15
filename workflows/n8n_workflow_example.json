@@ -1,0 +1,94 @@
+{
+  "name": "My First Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getMany",
+        "returnAll": true,
+        "filters": {
+          "labelIds": ["YOUR_LABEL_ID"]
+        },
+        "format": "full"
+      },
+      "name": "Gmail Get Emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  emailBody: Buffer.from(items[0].json.payload.body.data, 'base64').toString('utf-8')\n}];"
+      },
+      "name": "Decode Email Body",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer YOUR_OPENAI_API_KEY",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "model": "gpt-4-turbo",
+          "messages": [
+            {"role": "system", "content": "Extract order details from the email."},
+            {"role": "user", "content": "{{ $json['emailBody'] }}"}
+          ]
+        }
+      },
+      "name": "Parse Invoice with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "query": "SELECT COUNT(*) AS order_count FROM orders WHERE order_number = $1;",
+        "values": "={{ [$json['order_number']] }}"
+      },
+      "name": "Check Order in Neon DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {"value1": "={{ $json['order_count'] }}", "operation": "equal", "value2": 0}
+          ]
+        }
+      },
+      "name": "Order Not Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "query": "INSERT INTO orders (order_number, total_amount) VALUES ($1, $2);",
+        "values": "={{ [$json['order_number'], $json['total_amount']] }}"
+      },
+      "name": "Insert Order into Neon DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "batchSize": 1
+      },
+      "name": "Loop Through Order Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "query": "INSERT INTO order_items (order_number, item_name, quantity, price) VALUES ($1, $2, $3, $4);",
+        "values": "={{ [$json['order_number'], $json['name'], $json['quantity'], $json['price']] }}"
+      },
+      "name": "Insert Order Items",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "name": "SixtyEmailParser",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a766ccf0-ea71-4a28-8eee-cdfb0844dc85",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "Label_8053273605920564323"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "fbc65efd-8b7f-4b99-839d-73fd58279f11",
+      "name": "Gmail",
+      "webhookId": "e47fd36f-7487-4a16-93d8-bb6457b4bb90",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tF6lE9iJXc29DSQ7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "from bs4 import BeautifulSoup\n\n# Get the HTML email body\nhtml_body = items[0]['json']['html']\n\n# Use BeautifulSoup to extract text\nsoup = BeautifulSoup(html_body, \"html.parser\")\nplain_text_body = soup.get_text(separator=\"\\n\", strip=True)\n\nreturn [{\"json\": {\"body\": plain_text_body}}]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "f7a86a13-eff7-4ad4-b4fc-846ff8fc2e9d",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract structured order details from the following invoice text:\n\n{{ $json.body }}\n\nReturn JSON formatted as:\n\n{\n  \"order_details\": {\n    \"order_number\": \"<order_number>\",\n    \"date_placed\": \"<date_placed>\",\n    \"total_price\": \"<total_price>\"\n  },\n  \"order_items\": [\n    {\n      \"name\": \"<product_name>\",\n      \"quantity\": <quantity>,\n      \"unit_price\": \"<unit_price>\",\n      \"total_price\": \"<total_price>\"\n    }\n  ]\n}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        880,
+        0
+      ],
+      "id": "6fa3a0f4-df81-4cf3-a3e2-cc153c4e78e4",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        760,
+        220
+      ],
+      "id": "6ec82bf2-a466-435a-a608-b0d754d2c05b",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ZQoNJbHcpDRgMVRP",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a48751c9-70fa-4cbf-a82b-ebb96af53a18",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1744420ae9228d812d31ce9e8b6540b193c5fef22a7292b3e4f14c0f042a62bc"
+  },
+  "id": "1Sdk78nTuGiIlVsO",
+  "tags": []
+}
